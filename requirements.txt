@@ -1,4 +1,4 @@
-supabase-py
+supabase
 discord.py
 python-dotenv
 pytz
