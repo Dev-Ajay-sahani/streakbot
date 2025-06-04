@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from supabase import create_client, Client
 from datetime import datetime
 import pytz
@@ -91,7 +91,6 @@ def run_webserver():
     port = int(os.getenv("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
 
-# Start the Flask web server in a separate thread
 threading.Thread(target=run_webserver).start()
 
 # ---------- DISCORD BOT ----------
@@ -106,8 +105,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f'✅ Logged in as {bot.user.name}')
-    daily_post.start()
 
+# Manual Setup Command
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
@@ -138,8 +137,9 @@ async def setup(ctx):
     role_id = role_msg.role_mentions[0].id
 
     set_config(channel_id, role_id)
-    await ctx.send("✅ Setup complete. Daily reports will be sent.")
+    await ctx.send("✅ Setup complete. You can now use the bot.")
 
+# Commands
 @bot.command()
 async def streakon(ctx):
     success = increment_streak(str(ctx.author.id))
@@ -167,7 +167,7 @@ async def leaderboard(ctx):
     if not res.data:
         await ctx.send("No data found in leaderboard.")
         return
-    
+
     message = "**🏆 NoFap Leaderboard 🏆**\n\n"
     for i, user in enumerate(res.data[:10], start=1):
         try:
@@ -176,57 +176,55 @@ async def leaderboard(ctx):
         except:
             username = f"User ID {user['user_id']}"
         message += f"**#{i}** - {username} — **{user['streak']}** days\n"
-    
+
     await ctx.send(message)
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def testpost(ctx):
-    config = get_config()
-    if not config:
-        await ctx.send("❌ Configuration not set. Use `!setup` first.")
+# Sapphire Bot Message Listener
+@bot.event
+async def on_message(message):
+    if message.author.id == bot.user.id:
         return
 
-    channel = bot.get_channel(int(config['channel_id']))
-    role_id = config['role_id']
-    now = datetime.now(IST)
+    SAPPHIRE_ID = 678344927997853742
 
-    if not channel:
-        await ctx.send("❌ Could not find the configured channel.")
-        return
+    if message.author.id == SAPPHIRE_ID:
+        if message.mentions:
+            mentioned_user = message.mentions[0]
+            user_id = str(mentioned_user.id)
 
-    await channel.send(f"<@&{role_id}>")
-    await channel.send(
-        f"**✅ Test Report {now.strftime('%d %B %Y %H:%M')}**\n"
-        "Type:\n"
-        "`!streakon` - If you're on track ✅\n"
-        "`!streakbroken` - If streak is broken ❌\n"
-        "`!nightfall` - For nightfall only 🌙\n"
-        "`!leaderboard` - See top streaks 🔁"
-    )
-    await ctx.send("✅ Test post sent!")
+            if "!streakon" in message.content:
+                success = increment_streak(user_id)
+                if success:
+                    streak = get_streak(user_id)
+                    await message.channel.send(f"✅ {mentioned_user.mention} Streak updated! Current streak: **{streak} days** 💪")
+                else:
+                    await message.channel.send(f"⚠️ {mentioned_user.mention} You’ve already checked in today. Try again tomorrow!")
 
-@tasks.loop(minutes=1)
-async def daily_post():
-    now = datetime.now(IST)
-    if now.hour == 23 and now.minute == 0:
-        config = get_config()
-        if not config:
-            return
-        channel = bot.get_channel(int(config['channel_id']))
-        role_id = config['role_id']
+            elif "!streakbroken" in message.content or "!justdone" in message.content:
+                reset_streak(user_id)
+                await message.channel.send(f"❌ {mentioned_user.mention} Your streak has been reset to 0. Let's restart 🔁")
 
-        if not channel:
-            return
+            elif "!nightfall" in message.content:
+                streak = get_streak(user_id)
+                await message.channel.send(f"🌙 {mentioned_user.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**")
 
-        await channel.send(f"<@&{role_id}>")
-        await channel.send(
-            f"**📅 Daily Check-in {now.strftime('%d %B %Y %H:%M')}**\n"
-            "Type:\n"
-            "`!streakon` - If you're on track ✅\n"
-            "`!streakbroken` - If streak is broken ❌\n"
-            "`!nightfall` - For nightfall only 🌙\n"
-            "`!leaderboard` - See top streaks 🔁"
-        )
+            elif "!leaderboard" in message.content:
+                res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
+                if not res.data:
+                    await message.channel.send("No data found in leaderboard.")
+                    return
+
+                response = "**🏆 NoFap Leaderboard 🏆**\n\n"
+                for i, user in enumerate(res.data[:10], start=1):
+                    try:
+                        user_obj = await bot.fetch_user(int(user["user_id"]))
+                        username = user_obj.name
+                    except:
+                        username = f"User ID {user['user_id']}"
+                    response += f"**#{i}** - {username} — **{user['streak']}** days\n"
+
+                await message.channel.send(response)
+
+    await bot.process_commands(message)
 
 bot.run(DISCORD_TOKEN)
