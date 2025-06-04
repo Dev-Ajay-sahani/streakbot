@@ -5,6 +5,8 @@ from datetime import datetime
 import pytz
 import os
 from dotenv import load_dotenv
+from flask import Flask
+import threading
 
 load_dotenv()
 
@@ -77,6 +79,20 @@ def get_config():
     if res.data and len(res.data) > 0:
         return res.data[0]
     return None
+
+# ---------- FLASK WEB SERVER ----------
+app = Flask("")
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_webserver():
+    port = int(os.getenv("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
+
+# Start the Flask web server in a separate thread
+threading.Thread(target=run_webserver).start()
 
 # ---------- DISCORD BOT ----------
 intents = discord.Intents.default()
