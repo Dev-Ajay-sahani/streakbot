@@ -1,4 +1,5 @@
-supabase
 discord.py
-python-dotenv
+supabase
 pytz
+python-dotenv
+flask
