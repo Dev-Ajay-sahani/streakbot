@@ -28,29 +28,36 @@ def get_streak(user_id: str) -> int:
     return 0
 
 def increment_streak(user_id: str) -> bool:
-    today = datetime.now(IST).date()
+    now = datetime.now(IST)
+    today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
+
     res = supabase.table("streaks").select("*").eq("user_id", user_id).execute()
 
     if res.data and len(res.data) > 0:
-        last_updated = res.data[0].get("last_updated")
-        if last_updated:
-            last_date = datetime.fromisoformat(last_updated).astimezone(IST).date()
-            if last_date == today:
-                return False  # Already incremented today
+        last_updated_str = res.data[0].get("last_updated")
+        if last_updated_str:
+            last_updated = datetime.fromisoformat(last_updated_str).astimezone(IST)
+            
+            # Block if already updated after 9 PM of previous day
+            if last_updated >= today_9pm:
+                return False
 
         new_streak = res.data[0]["streak"] + 1
         supabase.table("streaks").update({
             "streak": new_streak,
-            "last_updated": datetime.now(IST).isoformat()
+            "last_updated": now.isoformat()
         }).eq("user_id", user_id).execute()
         return True
     else:
+        if now < today_9pm:
+            return False  # Don't allow first ever increment before 9 PM
         supabase.table("streaks").insert({
             "user_id": user_id,
             "streak": 1,
-            "last_updated": datetime.now(IST).isoformat()
+            "last_updated": now.isoformat()
         }).execute()
         return True
+
 
 def reset_streak(user_id: str):
     exists = get_streak(user_id)
