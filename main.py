@@ -303,27 +303,25 @@ async def on_message(message):
             elif "!nightfall" in message.content:
                 streak = get_streak(user_id)
                 await message.channel.send(f"🌙 {mentioned_user.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**")
+            elif "!countdown" in message.content:
+                if message.mentions:
+                mentioned_user = message.mentions[0]
+                else:
+                mentioned_user = message.author
 
-            elif "!leaderboard" in message.content:
-                res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
-                if not res.data:
-                    await message.channel.send("No data found in leaderboard.")
-                    return
+                now = datetime.now(IST)
+                today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
+                if now >= today_9pm:
+                    next_checkin = today_9pm + timedelta(days=1)
+                else:
+                    next_checkin = today_9pm
+                diff = next_checkin - now
+                hours, remainder = divmod(diff.seconds, 3600)
+                minutes = remainder // 60
 
-                response = "**🏆 NoFap Leaderboard 🏆**\n\n"
-                for i, user in enumerate(res.data[:10], start=1):
-                    try:
-                        user_obj = await bot.fetch_user(int(user["user_id"]))
-                        username = user_obj.name
-                    except:
-                        username = f"User ID {user['user_id']}"
-
-                    streak = user["streak"]
-                    rank_title = get_rank_title(streak)
-                    stamp = get_streak_stamp(user["user_id"])
-                    response += f"**#{i}** - {username} — **{streak}** days | {rank_title} | {stamp}\n"
-
-                await message.channel.send(response)
+                await message.channel.send(
+                    f"⏳ {mentioned_user.mention}, time left for next check-in: **{hours}h {minutes}m**"
+                )
 
     await bot.process_commands(message)
 import asyncio
