@@ -219,22 +219,28 @@ def get_rank_title(streak):
             return title
     return "Unranked"
 
+from datetime import timedelta
+
 def get_streak_stamp(user_id):
-    # Fake stamp from `last_updated` for 7 days (simulate without DB change)
-    now = datetime.now(IST)
     res = supabase.table("streaks").select("last_updated", "streak").eq("user_id", user_id).execute()
     if not res.data:
         return "❌❌❌❌❌❌❌"
+
     last_updated = datetime.fromisoformat(res.data[0]["last_updated"]).astimezone(IST)
     streak = res.data[0]["streak"]
+    now = datetime.now(IST)
+
     stamps = []
-    for i in range(7):
-        day = now.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=i)
-        if last_updated >= day:
+    for i in range(6, -1, -1):  # last 7 days, oldest to newest
+        day = now - timedelta(days=i)
+        cutoff = day.replace(hour=21, minute=0, second=0, microsecond=0)
+        if last_updated.date() == cutoff.date() and streak > 0:
+            stamps.append("✅")
+        elif i < streak:
             stamps.append("✅")
         else:
             stamps.append("❌")
-    return "".join(reversed(stamps))
+    return "".join(stamps)
 
 # --- UPDATE leaderboard command ---
 @bot.command()
@@ -299,10 +305,26 @@ async def on_message(message):
                 await message.channel.send(f"🌙 {mentioned_user.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**")
 
             elif "!leaderboard" in message.content:
-                res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
-                if not res.data:
-                    await message.channel.send("No data found in leaderboard.")
-                    return
+    res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
+    if not res.data:
+        await message.channel.send("No data found in leaderboard.")
+        return
+
+    response = "**🏆 NoFap Leaderboard 🏆**\n\n"
+    for i, user in enumerate(res.data[:10], start=1):
+        try:
+            user_obj = await bot.fetch_user(int(user["user_id"]))
+            username = user_obj.name
+        except:
+            username = f"User ID {user['user_id']}"
+
+        streak = user["streak"]
+        rank_title = get_rank_title(streak)
+        stamp = get_streak_stamp(user["user_id"])
+        response += f"**#{i}** - {username} — **{streak}** days | {rank_title} | {stamp}\n"
+
+    await message.channel.send(response)
+
 
                 response = "**🏆 NoFap Leaderboard 🏆**\n\n"
                 for i, user in enumerate(res.data[:10], start=1):
