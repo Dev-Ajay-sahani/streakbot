@@ -305,9 +305,9 @@ async def on_message(message):
                 await message.channel.send(f"🌙 {mentioned_user.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**")
             elif "!countdown" in message.content:
                 if message.mentions:
-                mentioned_user = message.mentions[0]
+                    mentioned_user = message.mentions[0]
                 else:
-                mentioned_user = message.author
+                    mentioned_user = message.author
 
                 now = datetime.now(IST)
                 today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
