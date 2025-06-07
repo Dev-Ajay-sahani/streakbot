@@ -324,6 +324,7 @@ async def on_message(message):
 
                 await message.channel.send(response)
 
+
             elif "!countdown" in message.content:
                 if message.mentions:
                     mentioned_user = message.mentions[0]
