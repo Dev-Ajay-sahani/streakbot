@@ -29,7 +29,15 @@ def get_streak(user_id: str) -> int:
 
 def increment_streak(user_id: str) -> bool:
     now = datetime.now(IST)
+
+    # Define today's 9 PM and yesterday's 9 PM
     today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
+    if now < today_9pm:
+        # If current time is before today 9 PM, the window started yesterday 9 PM
+        window_start = today_9pm.replace(day=today_9pm.day - 1)
+    else:
+        # If current time is after 9 PM, window starts today at 9 PM
+        window_start = today_9pm
 
     res = supabase.table("streaks").select("*").eq("user_id", user_id).execute()
 
@@ -37,11 +45,12 @@ def increment_streak(user_id: str) -> bool:
         last_updated_str = res.data[0].get("last_updated")
         if last_updated_str:
             last_updated = datetime.fromisoformat(last_updated_str).astimezone(IST)
-            
-            # Block if already updated after 9 PM of previous day
-            if last_updated >= today_9pm:
+
+            # Deny if user already checked in within this 9PM–9PM window
+            if last_updated >= window_start:
                 return False
 
+        # Allow increment
         new_streak = res.data[0]["streak"] + 1
         supabase.table("streaks").update({
             "streak": new_streak,
@@ -49,8 +58,9 @@ def increment_streak(user_id: str) -> bool:
         }).eq("user_id", user_id).execute()
         return True
     else:
+        # New user — only allow if after 9 PM
         if now < today_9pm:
-            return False  # Don't allow first ever increment before 9 PM
+            return False
         supabase.table("streaks").insert({
             "user_id": user_id,
             "streak": 1,
