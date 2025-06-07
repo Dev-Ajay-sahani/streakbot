@@ -294,7 +294,7 @@ async def on_message(message):
                     streak = get_streak(user_id)
                     await message.channel.send(f"✅ {mentioned_user.mention} Streak updated! Current streak: **{streak} days** 💪")
                 else:
-                    await message.channel.send(f"⚠️ {mentioned_user.mention} You’ve already checked in today. Try again tomorrow!")
+                    await message.channel.send(f"⚠️ {mentioned_user.mention} You’ve already checked in today. Check you Next Check In Time <a:ClockSoon:1380800692247068773>")
 
             elif "!streakbroken" in message.content or "!justdone" in message.content:
                 reset_streak(user_id)
@@ -322,18 +322,6 @@ async def on_message(message):
                     rank_title = get_rank_title(streak)
                     stamp = get_streak_stamp(user["user_id"])
                     response += f"**#{i}** - {username} — **{streak}** days | {rank_title} | {stamp}\n"
-
-                await message.channel.send(response)
-
-
-                response = "**🏆 NoFap Leaderboard 🏆**\n\n"
-                for i, user in enumerate(res.data[:10], start=1):
-                    try:
-                        user_obj = await bot.fetch_user(int(user["user_id"]))
-                        username = user_obj.name
-                    except:
-                        username = f"User ID {user['user_id']}"
-                    response += f"**#{i}** - {username} — **{user['streak']}** days\n"
 
                 await message.channel.send(response)
 
