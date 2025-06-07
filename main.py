@@ -303,6 +303,27 @@ async def on_message(message):
             elif "!nightfall" in message.content:
                 streak = get_streak(user_id)
                 await message.channel.send(f"🌙 {mentioned_user.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**")
+            elif "!leaderboard" in message.content:
+                res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
+                if not res.data:
+                    await message.channel.send("No data found in leaderboard.")
+                    return
+
+                response = "**🏆 NoFap Leaderboard 🏆**\n\n"
+                for i, user in enumerate(res.data[:10], start=1):
+                    try:
+                        user_obj = await bot.fetch_user(int(user["user_id"]))
+                        username = user_obj.name
+                    except:
+                        username = f"User ID {user['user_id']}"
+
+                    streak = user["streak"]
+                    rank_title = get_rank_title(streak)
+                    stamp = get_streak_stamp(user["user_id"])
+                    response += f"**#{i}** - {username} — **{streak}** days | {rank_title} | {stamp}\n"
+
+                await message.channel.send(response)
+
             elif "!countdown" in message.content:
                 if message.mentions:
                     mentioned_user = message.mentions[0]
