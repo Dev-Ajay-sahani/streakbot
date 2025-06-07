@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 import threading
+import asyncio
+from discord.ext import tasks
 
 load_dotenv()
 
@@ -159,12 +161,27 @@ async def setup(ctx):
 # Commands
 @bot.command()
 async def streakon(ctx):
-    success = increment_streak(str(ctx.author.id))
+    user_id = str(ctx.author.id)
+    success = increment_streak(user_id)
     if success:
-        streak = get_streak(str(ctx.author.id))
-        await ctx.send(f"✅ {ctx.author.mention} Streak updated! Current streak: **{streak} days** 💪")
+        streak = get_streak(user_id)
+        rank = get_rank_title(streak)
+        stamp = get_streak_stamp(user_id)
+
+        # Celebration
+        celebration = ""
+        if streak in [7, 30, 50, 100]:
+            celebration = f"🎉 **Milestone achieved! {streak} days!** 🎉\n"
+
+        await ctx.send(
+            f"✅ {ctx.author.mention} Streak updated!\n"
+            f"🔥 Current streak: **{streak} days**\n"
+            f"🏅 Rank: {rank}\n"
+            f"🗓️ History: {stamp}\n"
+            f"{celebration}"
+        )
     else:
-        await ctx.send(f"⚠️ {ctx.author.mention} You’ve already checked in today. Try again tomorrow!")
+        await ctx.send(f"⚠️ {ctx.author.mention} You’ve already checked in today. Try again after 9 PM!")
 
 @bot.command()
 async def streakbroken(ctx):
@@ -178,6 +195,48 @@ async def nightfall(ctx):
         f"🌙 {ctx.author.mention} It is fine, don't feel guilty. It is a natural process. No loss.\n🔥 Your streak remains: **{streak} days**"
     )
 
+RANKS = [
+    (100, "💠 The Absolute One"),
+    (95, "🕊️ True Sovereign"),
+    (90, "⚡ Slayer of Gods"),
+    (85, "🌌 World Shatterer"),
+    (80, "🔱 Ascended Reaper"),
+    (70, "👑 Shadow Monarch"),
+    (60, "🩸 Monarch’s Vessel"),
+    (50, "🕶️ Shadow Commander"),
+    (40, "🌑 Shadow Wielder"),
+    (30, "💥 S-Rank Breaker"),
+    (20, "🏆 A-Rank Champion"),
+    (15, "🏹 B-Rank Sentinel"),
+    (10, "🛡️ C-Rank Slayer"),
+    (5, "⚔️ D-Rank Reaper"),
+    (1, "🐣 E-Rank Seeker")
+]
+
+def get_rank_title(streak):
+    for threshold, title in RANKS:
+        if streak >= threshold:
+            return title
+    return "Unranked"
+
+def get_streak_stamp(user_id):
+    # Fake stamp from `last_updated` for 7 days (simulate without DB change)
+    now = datetime.now(IST)
+    res = supabase.table("streaks").select("last_updated", "streak").eq("user_id", user_id).execute()
+    if not res.data:
+        return "❌❌❌❌❌❌❌"
+    last_updated = datetime.fromisoformat(res.data[0]["last_updated"]).astimezone(IST)
+    streak = res.data[0]["streak"]
+    stamps = []
+    for i in range(7):
+        day = now.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        if last_updated >= day:
+            stamps.append("✅")
+        else:
+            stamps.append("❌")
+    return "".join(reversed(stamps))
+
+# --- UPDATE leaderboard command ---
 @bot.command()
 async def leaderboard(ctx):
     res = supabase.table("streaks").select("*").order("streak", desc=True).execute()
@@ -192,9 +251,23 @@ async def leaderboard(ctx):
             username = user_obj.name
         except:
             username = f"User ID {user['user_id']}"
-        message += f"**#{i}** - {username} — **{user['streak']}** days\n"
-
+        rank_title = get_rank_title(user["streak"])
+        stamp = get_streak_stamp(user["user_id"])
+        message += f"**#{i}** - {username} — **{user['streak']}** days  | {rank_title}  | {stamp}\n"
     await ctx.send(message)
+@bot.command()
+async def countdown(ctx):
+    now = datetime.now(IST)
+    today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
+    if now >= today_9pm:
+        next_checkin = today_9pm + timedelta(days=1)
+    else:
+        next_checkin = today_9pm
+    diff = next_checkin - now
+    hours, remainder = divmod(diff.seconds, 3600)
+    minutes = remainder // 60
+    await ctx.send(f"⏳ Time left for next check-in: **{hours}h {minutes}m**")
+
 
 # Sapphire Bot Message Listener
 @bot.event
@@ -243,5 +316,17 @@ async def on_message(message):
                 await message.channel.send(response)
 
     await bot.process_commands(message)
+import asyncio
+from discord.ext import tasks
 
+@tasks.loop(minutes=1)
+async def reminder_check():
+    now = datetime.now(IST)
+    if now.hour == 15 and now.minute == 0:
+        config = get_config()
+        if config:
+            channel = bot.get_channel(config["channel_id"])
+            role = discord.utils.get(channel.guild.roles, id=config["role_id"])
+            if channel and role:
+                await channel.send(f"🔔 {role.mention} 6 hours left to check-in! Don't forget to update your streak before 9 PM ⏰")
 bot.run(DISCORD_TOKEN)
