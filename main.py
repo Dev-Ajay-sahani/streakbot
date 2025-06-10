@@ -180,9 +180,8 @@ if success:
         f"🗓️ History: {stamp}\n"
         f"{celebration}"
     )
-
-else:
-    await ctx.send(f"⚠️ {ctx.author.mention} You’ve already checked in today. Try again after 9 PM!")
+    else:
+        await ctx.send(f"⚠️ {ctx.author.mention} You’ve already checked in today. Try again after 9 PM!")
 
 @bot.command()
 async def streakbroken(ctx):
