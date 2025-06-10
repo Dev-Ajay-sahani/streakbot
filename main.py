@@ -165,7 +165,7 @@ async def streakon(ctx):
     success = increment_streak(user_id)
 
     if success:
-        await asyncio.sleep(0.5)  # ⏱️ short delay to ensure Supabase update completes
+        await asyncio.sleep(3)  # ⏱️ short delay to ensure Supabase update completes
         streak = get_streak(user_id)  # Now fetch the updated streak
         rank = get_rank_title(streak)
         stamp = get_streak_stamp(user_id)
