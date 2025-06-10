@@ -162,27 +162,31 @@ async def setup(ctx):
 @bot.command()
 async def streakon(ctx):
     user_id = str(ctx.author.id)
+    yesterday_streak = get_streak(user_id)  # get before increment
+
     success = increment_streak(user_id)
 
     if success:
-        await asyncio.sleep(3)  # ⏱️ short delay to ensure Supabase update completes
-        streak = get_streak(user_id)  # Now fetch the updated streak
-        rank = get_rank_title(streak)
+        await asyncio.sleep(1)  # Wait if needed for DB consistency
+        new_streak = get_streak(user_id)  # fetch after increment
+        rank = get_rank_title(new_streak)
         stamp = get_streak_stamp(user_id)
 
         celebration = ""
-        if streak in [7, 21, 30, 45, 60, 75, 90, 100]:
-            celebration = f"🎉 **Milestone achieved! {streak} days!** 🎉\n"
+        # 🎯 Delayed milestone: congratulate today for yesterday's achievement
+        if yesterday_streak in [7, 21, 30, 45, 60, 75, 90, 100]:
+            celebration = f"🎉 **Milestone achieved yesterday: {yesterday_streak} days!** 🎉\n"
 
         await ctx.send(
             f"✅ {ctx.author.mention} Streak updated!\n"
-            f"🔥 Current streak: **{streak} days**\n"
+            f"🔥 Current streak: **{new_streak} days**\n"
             f"🏅 Rank: {rank}\n"
             f"🗓️ History: {stamp}\n"
             f"{celebration}"
         )
     else:
         await ctx.send(f"⚠️ {ctx.author.mention} You’ve already checked in today. Try again after 9 PM!")
+
 
 @bot.command()
 async def streakbroken(ctx):
