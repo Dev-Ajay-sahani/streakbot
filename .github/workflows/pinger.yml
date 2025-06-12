@@ -1,0 +1,13 @@
+name: Ping StreakBot Every Minute
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # Runs every 1 minute
+  workflow_dispatch:       # Allows manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping StreakBot
+        run: curl -s https://streakbot-pfrw.onrender.com
