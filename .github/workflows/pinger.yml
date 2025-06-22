@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping StreakBot
-        run: curl -s https://streakbot-pfrw.onrender.com
+        run: curl -s https://streakbot-ty4w.onrender.com
