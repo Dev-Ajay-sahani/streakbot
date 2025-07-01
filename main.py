@@ -9,7 +9,7 @@ from flask import Flask
 import threading
 import asyncio
 from discord.ext import tasks
-
+from datetime import timedelta
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -36,7 +36,7 @@ def increment_streak(user_id: str) -> bool:
     today_9pm = now.replace(hour=21, minute=0, second=0, microsecond=0)
     if now < today_9pm:
         # If current time is before today 9 PM, the window started yesterday 9 PM
-        window_start = today_9pm.replace(day=today_9pm.day - 1)
+        window_start = today_9pm - timedelta(days=1)
     else:
         # If current time is after 9 PM, window starts today at 9 PM
         window_start = today_9pm
